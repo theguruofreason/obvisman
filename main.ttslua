@@ -1,0 +1,92 @@
+-- Globals --
+REVEAL_ON_REMOVE = true
+
+-- Helpers --
+function union(t1, t2)
+  local result = t1
+  for _, val1 in pairs(t2) do
+    local found = false
+    for _, val2 in pairs(result) do
+      if val2 == val1 then
+        found = true
+        break
+      end
+    end
+    if not found then
+      table.insert(result, val1)
+    end
+  end
+  return result
+end
+
+function disjunction(t1, t2)
+  local result = t1
+  for _, val1 in pairs(t2) do
+    for i, val2 in pairs(result) do
+      if val2 == val1 then
+        result[i] = nil
+        break
+      end
+    end
+  end
+  return result
+end
+
+-- Data --
+Groups = {}
+Group = {}
+function Group:new(o)
+  o = o or {}
+  o.objects = {}
+  o.visibleTo = Player.getColors()
+  return setmetatable(o, Group)
+end
+function Group:__add(object)
+  self.objects:insert(object.guid, object)
+end
+function Group:__sub(object)
+  self.objects[object.guid] = nil
+  if REVEAL_ON_REMOVE then
+    object.setInvisibleTo({})
+  end
+end
+function Group:reveal(colors)
+  local colors = colors or {}
+  local colors = union(self.visibleTo, colors)
+  for guid, obj in pairs(self.objects) do
+    obj.setInvisibleTo(disjunction(colors, Player.getColors()))
+  end
+end
+function Group:hide(colors)
+  local colors = colors or {}
+  local colors = disjunction(self.visibleTo, colors)
+  for guid, obj in pairs(self.objects) do
+    obj.setInvisibleTo(disjunction(colors, Player.getColors()))
+  end
+  self.visibleTo = colors
+end
+function Group:toggleInvisible()
+  self.hide(Player.getColors())
+end
+function Group:save()
+end
+
+-- System --
+
+function onSave()
+  local save_data = {}
+  for i, g in pairs(Groups) do
+    save_data[i] = g
+  end
+  return JSON.encode_pretty(save_data)
+end
+
+function onLoad(save_state)
+  local save_data = JSON.decode(save_state)
+  for i, g in paris(save_data) do
+    Groups[i] = Group:new(g)
+  end
+end
+
+-- Functions --
+function
